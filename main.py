@@ -9,17 +9,22 @@ def load_data(file_path):
 
 data = load_data('bakery_advertising_data.csv')
 
-def preprocess_data(df):
+def preprocess_data(df, training=True, feature_names=None):
     """Preprocess the dataset for linear regression."""
-    # Convert categorical variables to dummy variables
-    df = pd.get_dummies(df, columns=['Canal', 'Mois', 'Jour_Semaine'], drop_first=True)
+    df_processed = pd.get_dummies(df, columns=['Canal', 'Mois', 'Jour_Semaine'])
     
-    # Select features and target variable
-    X = df.drop(columns=['Date', 'Chiffre_Affaires', 'ROI'])
-    y = df['Chiffre_Affaires']
-    
-    return X, y
-X, y = preprocess_data(data)
+    if training:
+        X = df_processed.drop(columns=['Date', 'Chiffre_Affaires', 'ROI'])
+        y = df_processed['Chiffre_Affaires']
+        return X, y, X.columns
+    else:
+        for col in feature_names:
+            if col not in df_processed.columns:
+                df_processed[col] = 0
+        return df_processed[feature_names]
+
+X, y, feature_names = preprocess_data(data, training=True)
+
 def train_model(X, y):
     """Train a linear regression model."""
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
@@ -40,11 +45,13 @@ def evaluate_model(model, X_test, y_test):
     print(f"Mean Squared Error: {mse:.2f}")
     print(f"R-squared: {r2:.2f}")
 evaluate_model(model, X_test, y_test)
-def predict_revenue(model, new_data):
+
+def predict_revenue(model, new_data, feature_names):
     """Predict revenue using the trained model."""
-    new_data = preprocess_data(new_data)[0]
-    predictions = model.predict(new_data)
+    new_data_processed = preprocess_data(new_data, training=False, feature_names=feature_names)
+    predictions = model.predict(new_data_processed)
     return predictions
+
 new_data = pd.DataFrame({
     'Budget': [1000, 1500],
     'Impressions': [50000, 75000],
@@ -58,6 +65,6 @@ new_data = pd.DataFrame({
     'Mois': ['Janvier', 'Février'],  
     'Jour_Semaine': ['Lundi', 'Mardi'] 
 })
-predictions = predict_revenue(model, new_data)
+predictions = predict_revenue(model, new_data, feature_names)
 print("Predicted Revenue for New Data:")
 print(predictions)
